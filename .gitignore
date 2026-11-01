@@ -1,0 +1,89 @@
+# ==============================================================================
+# PGIA Student Chatbot & AI Assistant - Git Ignore Rules
+# ==============================================================================
+
+# --- Sensitive Environment & Secrets ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+auth.json
+
+# --- Database & SQLite Binaries ---
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+database/*.sqlite*
+whatsapp-chatbot/database/*.sqlite*
+
+# --- Dependency Folders ---
+vendor/
+node_modules/
+whatsapp-chatbot/vendor/
+whatsapp-chatbot/node_modules/
+
+# --- Large Backups and Tarballs ---
+*.tar.gz
+*.tar
+*.zip
+*.7z
+*.gz
+
+# --- Python Bytecode & Virtual Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# --- Ephemeral Runtime Files ---
+public/tunnel_url.txt
+whatsapp-chatbot/public/tunnel_url.txt
+public/hot
+whatsapp-chatbot/public/hot
+public/storage
+whatsapp-chatbot/public/storage
+
+# --- Laravel Logs and Cache ---
+storage/logs/*.log
+whatsapp-chatbot/storage/logs/*.log
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+whatsapp-chatbot/storage/framework/cache/*
+!whatsapp-chatbot/storage/framework/cache/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+whatsapp-chatbot/storage/framework/sessions/*
+!whatsapp-chatbot/storage/framework/sessions/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+whatsapp-chatbot/storage/framework/views/*
+!whatsapp-chatbot/storage/framework/views/.gitignore
+storage/framework/testing/*
+!storage/framework/testing/.gitignore
+whatsapp-chatbot/storage/framework/testing/*
+!whatsapp-chatbot/storage/framework/testing/.gitignore
+
+# --- IDEs, OS & Editor Artifacts ---
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Antigravity Scratch / Logs ---
+scratch/
+.system_generated/

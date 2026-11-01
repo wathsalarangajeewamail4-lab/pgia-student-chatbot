@@ -1,0 +1,19 @@
+[Unit]
+Description=Cloudflare Tunnel for WhatsApp Chatbot
+After=network.target nginx.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/run-whatsapp-tunnel.sh
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/whatsapp-tunnel.log
+StandardError=append:/var/log/whatsapp-tunnel.log
+
+# Resource Protection Quotas
+MemoryMax=500M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

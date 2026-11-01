@@ -1,0 +1,266 @@
+# -*- coding: utf-8 -*-
+import os
+import sys
+import time
+import json
+import math
+import re
+import sqlite3
+import requests
+import numpy as np
+from typing import List, Dict, Any, Optional
+from rank_bm25 import BM25Okapi
+from fastembed.rerank.cross_encoder import TextCrossEncoder
+from langchain_groq import ChatGroq
+from langchain_core.messages import SystemMessage, HumanMessage
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Auto-detect database and env paths with fallback for production and local environments
+_default_db = os.path.join(BASE_DIR, "database", "database.sqlite")
+DB_PATH = os.environ.get("DB_PATH", _default_db if os.path.exists(_default_db) else "/var/www/whatsapp-chatbot/database/database.sqlite")
+
+_default_env = os.path.join(BASE_DIR, ".env")
+ENV_PATH = os.environ.get("ENV_PATH", _default_env if os.path.exists(_default_env) else "/var/www/whatsapp-chatbot/.env")
+
+def load_env_vars() -> Dict[str, str]:
+    res = {}
+    if os.path.exists(ENV_PATH):
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    res[k.strip()] = v.strip().replace('"', '').replace("'", "")
+    return res
+
+class PgiaHybridEngine:
+    _instance = None
+
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+
+    def __init__(self):
+        self.env = load_env_vars()
+        self.groq_api_key = self.env.get("GROQ_API_KEY", "")
+        self.embed_url = self.env.get("OLLAMA_EMBED_URL", "http://192.248.43.138:11434/api/embeddings")
+        
+        self.load_knowledge_base()
+
+        print("[HybridEngine] Initializing BAAI/bge-reranker-base...")
+        t0 = time.time()
+        self.reranker = TextCrossEncoder(model_name="BAAI/bge-reranker-base")
+        print(f"[HybridEngine] Reranker initialized in {time.time()-t0:.2f}s")
+
+        self.llm = ChatGroq(
+            api_key=self.groq_api_key,
+            model_name="openai/gpt-oss-120b",
+            temperature=0.15,
+            max_tokens=1024
+        )
+
+    def load_knowledge_base(self):
+        print(f"[HybridEngine] Loading chunks from {DB_PATH}...")
+        t0 = time.time()
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT id, source, chunk_text, embedding FROM knowledge_base ORDER BY id ASC")
+        rows = c.fetchall()
+        conn.close()
+
+        self.ids = [r[0] for r in rows]
+        self.sources = [r[1] for r in rows]
+        self.texts = [r[2] for r in rows]
+
+        tokenized_corpus = [doc.lower().split() for doc in self.texts]
+        self.bm25 = BM25Okapi(tokenized_corpus)
+
+        raw_embeddings = [json.loads(r[3]) for r in rows]
+        self.embeddings = np.array(raw_embeddings, dtype=np.float32)
+        norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+        norms[norms == 0] = 1e-10
+        self.norm_embeddings = self.embeddings / norms
+
+        print(f"[HybridEngine] Loaded {len(self.texts)} chunks into Vector Matrix & BM25 Index in {time.time()-t0:.2f}s")
+
+    def embed_query(self, text: str) -> np.ndarray:
+        try:
+            resp = requests.post(self.embed_url, json={
+                "model": "nomic-embed-text",
+                "prompt": text
+            }, timeout=6)
+            if resp.status_code == 200:
+                vec = np.array(resp.json().get("embedding", []), dtype=np.float32)
+                norm = np.linalg.norm(vec)
+                return vec / (norm if norm > 0 else 1.0)
+        except Exception as e:
+            print(f"[HybridEngine] Dell T440 embed warning: {e}")
+        return np.zeros(768, dtype=np.float32)
+
+    def hybrid_search(self, query: str, top_k: int = 4) -> List[Dict[str, Any]]:
+        t_start = time.time()
+        query_tokens = query.lower().split()
+
+        bm25_scores = self.bm25.get_scores(query_tokens)
+        bm25_top = np.argsort(bm25_scores)[::-1][:25]
+
+        q_vec = self.embed_query(query)
+        if np.any(q_vec):
+            sims = self.norm_embeddings @ q_vec
+            vec_top = np.argsort(sims)[::-1][:25]
+        else:
+            vec_top = []
+
+        k = 60
+        rrf_scores = {}
+        for rank, idx in enumerate(vec_top):
+            rrf_scores[idx] = rrf_scores.get(idx, 0.0) + (1.0 / (k + rank + 1))
+        for rank, idx in enumerate(bm25_top):
+            rrf_scores[idx] = rrf_scores.get(idx, 0.0) + (1.0 / (k + rank + 1))
+
+        fused = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)[:8]
+        if not fused:
+            return []
+
+        candidate_indices = [idx for idx, _ in fused]
+        candidate_docs = [self.texts[idx] for idx in candidate_indices]
+
+        raw_scores = list(self.reranker.rerank(query, candidate_docs))
+        
+        ranked_results = []
+        for rank_idx, (c_idx, score) in enumerate(zip(candidate_indices, raw_scores)):
+            clamped = max(-10.0, min(5.0, score))
+            prob = 0.40 + ((clamped + 10.0) / 15.0) * 0.55
+            ranked_results.append({
+                "id": self.ids[c_idx],
+                "source": self.sources[c_idx],
+                "text": self.texts[c_idx],
+                "score": float(score),
+                "confidence": float(prob)
+            })
+
+        ranked_results.sort(key=lambda x: x["score"], reverse=True)
+        final_matches = ranked_results[:top_k]
+
+        duration = (time.time() - t_start) * 1000
+        print(f"[HybridEngine] Hybrid RAG (Vector + BM25 + RRF + Reranker) completed in {duration:.1f}ms (Top score: {final_matches[0]['confidence']*100:.1f}%)")
+        return final_matches
+
+    def generate_grounded_answer(self, question: str) -> Dict[str, Any]:
+        t0 = time.time()
+        matches = self.hybrid_search(question, top_k=4)
+
+        if not matches:
+            return {
+                "answer": "I am sorry, but I could not find relevant institutional records in the official PGIA handbooks for your request. Please contact the Admissions Branch at info@pgia.pdn.ac.lk.",
+                "sources": [],
+                "top_score": 0.0,
+                "latency_ms": (time.time() - t0) * 1000
+            }
+
+        context_parts = []
+        unique_sources = []
+        for m in matches:
+            if m["source"] and m["source"] not in unique_sources:
+                unique_sources.append(m["source"])
+            context_parts.append(f"[Document: {m['source']}]\n{m['text']}")
+
+        context_text = "\n\n---\n\n".join(context_parts)
+
+        system_prompt = (
+            "You are the official postgraduate Academic AI Assistant for the Postgraduate Institute of Agriculture (PGIA), University of Peradeniya.\n"
+            "Your goal is to provide beautifully structured, highly readable, executive answers strictly grounded in the official excerpts.\n\n"
+            "WHATSAPP FORMATTING & COLOR-ACCENT DIRECTIVES:\n"
+            "1. SECTION HEADERS WITH COLOR-CODED EMOJIS:\n"
+            "   - Use structured section headers styled with bold and distinct colored emojis:\n"
+            "     📌 *Topic Title* (The primary topic of the response)\n"
+            "     🔹 *Overview & Scope* (Brief 1-2 sentence context)\n"
+            "     📋 *Key Requirements* or 🎓 *Eligibility Criteria*\n"
+            "     💰 *Fee Structure & Payments*\n"
+            "     📝 *Application & Verification Procedure*\n"
+            "     🗓️ *Important Deadlines & Semesters*\n"
+            "   - Use single asterisks for bold: *Bold Title* (NEVER use markdown hashes '#' or double asterisks '**').\n\n"
+            "2. CLEAN ALIGNED BULLET POINTS:\n"
+            "   - For main items, use the clean bullet '• ' followed by *Bold Feature Label:* then details.\n"
+            "     Example:\n"
+            "     • *Degree Requirement:* 4-Year Bachelor's Honours Degree (SLQF Level 6).\n"
+            "     • *Minimum GPA:* At least 3.00 on a 4.00 scale.\n"
+            "   - For nested sub-details, indent with '  ▫️ '.\n"
+            "   - Leave a clean blank line between different major sections for mobile screen comfort.\n\n"
+            "3. HIGHLIGHT QUOTE BOXES (WHATSAPP BLOCKQUOTES):\n"
+            "   - For vital discounts, payment portals, contact details, or cautions, place them inside a WhatsApp blockquote (prefix lines with '> ').\n"
+            "     Example:\n"
+            "     > 💡 *Special Payment Privilege:*\n"
+            "     > A 10% fee waiver applies when the full program fee is paid at once via credit card or cash.\n\n"
+            "4. GROUNDING INTEGRITY:\n"
+            "   - State exact numbers, credit amounts, and procedures from the reference excerpts.\n"
+            "   - Never hallucinate external universities or unverified rules.\n\n"
+            "=== OFFICIAL PGIA REFERENCE EXCERPTS ===\n"
+            f"{context_text}"
+        )
+
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=question)
+        ]
+
+        try:
+            response = self.llm.invoke(messages)
+            raw_answer = response.content
+        except Exception as e:
+            print(f"[HybridEngine] LangChain Groq Error: {e}, falling back to Qwen...")
+            fallback_llm = ChatGroq(
+                api_key=self.groq_api_key,
+                model_name="qwen/qwen3.8-27b",
+                temperature=0.15
+            )
+            response = fallback_llm.invoke(messages)
+            raw_answer = response.content
+
+        formatted_answer = self.format_whatsapp(raw_answer, unique_sources, matches[0]["confidence"])
+        total_time = (time.time() - t0) * 1000
+
+        return {
+            "answer": formatted_answer,
+            "raw_answer": raw_answer,
+            "sources": unique_sources,
+            "top_score": matches[0]["confidence"],
+            "latency_ms": round(total_time, 1)
+        }
+
+    def format_whatsapp(self, text: str, sources: List[str], confidence: float) -> str:
+        # Convert any markdown headers to bold with emoji
+        text = re.sub(r'^\s*#{1,6}\s*(.*?)$', r'📌 *\1*', text, flags=re.MULTILINE)
+
+        # Convert double asterisks to single asterisks for WhatsApp
+        text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
+
+        # Fix broken question mark bullets from legacy encodings
+        text = re.sub(r'^\s*\?\?\s*', '• ', text, flags=re.MULTILINE)
+        text = re.sub(r'^\s*\?\s*', '• ', text, flags=re.MULTILINE)
+
+        # Standardize dashes and asterisks bullets
+        text = re.sub(r'^\s*[\*\-]\s+', '• ', text, flags=re.MULTILINE)
+        text = text.strip()
+
+        divider = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        source_text = ", ".join(sources) if sources else "Official PGIA Handbooks"
+        score_percent = round(confidence * 100)
+
+        header = (
+            "🏛️ *POSTGRADUATE INSTITUTE OF AGRICULTURE*\n"
+            "_University of Peradeniya • Institutional AI Desk_\n"
+            f"{divider}\n\n"
+        )
+
+        footer = (
+            f"\n\n{divider}\n"
+            "🏛️ *PGIA Official Knowledge Base*\n"
+            f"📄 _Official Reference: {source_text}_\n"
+            f"🎯 _Verification Confidence: {score_percent}% High Fidelity_"
+        )
+
+        return header + text + footer

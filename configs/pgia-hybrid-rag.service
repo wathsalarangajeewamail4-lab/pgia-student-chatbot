@@ -1,0 +1,18 @@
+[Unit]
+Description=PGIA Hybrid RAG Microservice (Vector + BM25 + BGE Reranker)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/whatsapp-chatbot/python
+ExecStart=/var/www/omni-workforce/venv/bin/python3 /var/www/whatsapp-chatbot/python/pgia_daemon.py
+Restart=always
+RestartSec=3
+
+# Resource Quotas
+MemoryMax=2500M
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target
