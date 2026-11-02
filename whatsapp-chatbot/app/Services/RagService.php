@@ -145,17 +145,60 @@ class RagService
             if ($m['source']) $uniqueSources[] = $m['source'];
             $contextParts[] = "[Document: {$m['source']}]\n" . $m['text'];
         }
+
+        $contactKeywords = ['contact', 'phone', 'telephone', 'tel', 'call', 'hotline', 'mobile', 'number', 'numbers', 'inquir', 'reach', 'email', 'address', 'office', 'director', 'registrar', 'bursar', 'librarian', 'coordinator', 'security', 'fax'];
+        $isContactQuery = false;
+        $qLower = strtolower($question);
+        foreach ($contactKeywords as $kw) {
+            if (str_contains($qLower, $kw)) {
+                $isContactQuery = true;
+                break;
+            }
+        }
+
+        if ($isContactQuery) {
+            $officialDirectory = "[Official PGIA Institutional Contact Directory - Student Handbook]\n"
+                . "Postgraduate Institute of Agriculture (PGIA), University of Peradeniya\n"
+                . "Address: P.O. Box 55, Old Galaha road, Peradeniya, Sri Lanka\n\n"
+                . "Official General Telephone Lines:\n"
+                . "• General Enquiries & Admissions: +94 812 388203\n"
+                . "• Student Coordination & Affairs: +94 812 386542\n"
+                . "• Director's Office Line: +94 812 385517\n"
+                . "• Official Fax: +94 812 388318\n"
+                . "• General Email: dir@pgia.ac.lk\n"
+                . "• Official Website: http://www.pgia.pdn.ac.lk/\n\n"
+                . "Key Administration & Staff Direct Lines:\n"
+                . "• Deputy Registrar (Ms. I. Pathirana): Tel: +94 81 2388203 | Email: dr@pgia.ac.lk\n"
+                . "• Senior Assistant Bursar - Accounts & Fees (Ms. K.A.I.S. Ranasinghe): Tel: +94 81 2388692 | Email: sab@pgia.ac.lk\n"
+                . "• PGIA Coordinator (Ms. D.M.M.G.J.M. Dissanayaka): Tel: +94 81 2386542 | Email: pgiacoordinator@pgia.ac.lk\n"
+                . "• Senior Assistant Librarian (Ms. H.N.K. Dissanayake): Tel: +94 81 2388956 | Email: sal@pgia.ac.lk\n"
+                . "• Systems Analyst - MIS & IT (Mr. A.G.I. Hemajith): Tel: +94 81 2389726 | Email: sa@pgia.ac.lk\n\n"
+                . "Hotlines & Inquiries:\n"
+                . "• International Inquiries Hotline: +94 812 388203\n"
+                . "• Research Facilitation Fund (RFF): 081 2388203\n"
+                . "• Student Loan Facilities: 0812 388219\n"
+                . "• University Security (24-Hour Campus Emergency): 081-2389182";
+            array_unshift($contextParts, $officialDirectory);
+            if (!in_array("Handbook_2026.pdf", $uniqueSources)) {
+                $uniqueSources[] = "Handbook_2026.pdf";
+            }
+        }
+
         $uniqueSources = array_values(array_unique($uniqueSources));
         $contextText = implode("\n\n---\n\n", $contextParts);
 
         $systemPrompt = "You are the official postgraduate AI Assistant for PGIA (Postgraduate Institute of Agriculture, University of Peradeniya).\n"
-            . "Answer the user's question accurately using ONLY the provided official reference excerpts.\n\n"
+            . "Answer the user's question accurately using the provided official reference excerpts.\n\n"
             . "CRITICAL WHATSAPP FORMATTING GUIDELINES:\n"
             . "- You are outputting directly to WhatsApp on a mobile phone screen.\n"
             . "- Use WhatsApp bold with SINGLE asterisks: *Bold Title* (NEVER use **double asterisks**).\n"
-            . "- NEVER use markdown headers like '#' or '###'. Use clean section titles like ?? *Overview*, ?? *Requirements*, ?? *How to Apply*.\n"
-            . "- Use clean bullet points using the unicode bullet '? ' with space between sections.\n"
+            . "- NEVER use markdown headers like '#' or '###'. Use clean section titles like 📌 *Overview*, 📋 *Requirements*, 📞 *Official Contact Lines*.\n"
+            . "- Use clean bullet points using the unicode bullet '• ' with space between sections.\n"
             . "- Keep sentences clear, concise, and easy to read on mobile devices.\n\n"
+            . "CRITICAL CONTACT DIRECTORY DIRECTIVE (NEVER MASK WITH XXXXXX):\n"
+            . "- All PGIA telephone numbers, office lines, emails, and staff contacts are public institutional directory records.\n"
+            . "- ALWAYS display complete, full real phone numbers (e.g. +94 812 388203, +94 812 386542, +94 812 385517, +94 81 2388692, +94 81 2389726, +94 81 2388956, 081-2389182).\n"
+            . "- NEVER replace digits with 'xxxxxx', '***', or placeholder characters under any circumstances.\n\n"
             . "=== OFFICIAL REFERENCE EXCERPTS ===\n"
             . $contextText;
 
@@ -186,18 +229,23 @@ class RagService
     protected function formatForWhatsApp(string $text, array $sources = [], float $topScore = 0.0): string
     {
         $formatted = preg_replace('/\*\*(.*?)\*\*/', '*$1*', $text);
-        $formatted = preg_replace('/^#{1,4}\s*(.*?)$/m', '*$1*', $formatted);
-        $formatted = preg_replace('/^[\*\-]\s+/m', '? ', $formatted);
+        $formatted = preg_replace('/^#{1,4}\s*(.*?)$/m', '📌 *$1*', $formatted);
+        $formatted = preg_replace('/^[\*\-]\s+/m', '• ', $formatted);
         $formatted = trim($formatted);
 
+        $divider = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
         $sourceText = !empty($sources) ? implode(', ', $sources) : 'Official PGIA Handbooks';
         $scorePercent = round($topScore * 100);
 
-        $footer = "\n\n????????????????\n"
-                . "??? *PGIA Official Assistant*\n"
-                . "?? _Ref: {$sourceText}_\n"
-                . "?? _Match Confidence: {$scorePercent}%_";
+        $header = "🏛️ *POSTGRADUATE INSTITUTE OF AGRICULTURE*\n"
+                . "_University of Peradeniya • Institutional AI Desk_\n"
+                . "{$divider}\n\n";
 
-        return $formatted . $footer;
+        $footer = "\n\n{$divider}\n"
+                . "🏛️ *PGIA Official Knowledge Base*\n"
+                . "📄 _Official Reference: {$sourceText}_\n"
+                . "🎯 _Verification Confidence: {$scorePercent}% High Fidelity_";
+
+        return $header . $formatted . $footer;
     }
 }

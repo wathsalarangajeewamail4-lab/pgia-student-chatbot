@@ -168,6 +168,42 @@ class PgiaHybridEngine:
                 unique_sources.append(m["source"])
             context_parts.append(f"[Document: {m['source']}]\n{m['text']}")
 
+        # Ensure Official PGIA Contact Directory is provided for contact inquiries
+        contact_keywords = [
+            "contact", "phone", "telephone", "tel", "call", "hotline", "mobile",
+            "number", "numbers", "inquir", "inquiry", "reach", "email", "address",
+            "office", "director", "registrar", "bursar", "librarian", "coordinator",
+            "security", "fax"
+        ]
+        q_lower = question.lower()
+        if any(w in q_lower for w in contact_keywords):
+            official_directory = (
+                "[Official PGIA Institutional Contact Directory - Student Handbook]\n"
+                "Postgraduate Institute of Agriculture (PGIA), University of Peradeniya\n"
+                "Address: P.O. Box 55, Old Galaha road, Peradeniya, Sri Lanka\n\n"
+                "Official General Telephone Lines:\n"
+                "• General Enquiries & Admissions: +94 812 388203\n"
+                "• Student Coordination & Affairs: +94 812 386542\n"
+                "• Director's Office Line: +94 812 385517\n"
+                "• Official Fax: +94 812 388318\n"
+                "• General Email: dir@pgia.ac.lk\n"
+                "• Official Website: http://www.pgia.pdn.ac.lk/\n\n"
+                "Key Administration & Staff Direct Lines:\n"
+                "• Deputy Registrar (Ms. I. Pathirana): Tel: +94 81 2388203 | Email: dr@pgia.ac.lk\n"
+                "• Senior Assistant Bursar - Accounts & Fees (Ms. K.A.I.S. Ranasinghe): Tel: +94 81 2388692 | Email: sab@pgia.ac.lk\n"
+                "• PGIA Coordinator (Ms. D.M.M.G.J.M. Dissanayaka): Tel: +94 81 2386542 | Email: pgiacoordinator@pgia.ac.lk\n"
+                "• Senior Assistant Librarian (Ms. H.N.K. Dissanayake): Tel: +94 81 2388956 | Email: sal@pgia.ac.lk\n"
+                "• Systems Analyst - MIS & IT (Mr. A.G.I. Hemajith): Tel: +94 81 2389726 | Email: sa@pgia.ac.lk\n\n"
+                "Hotlines & Inquiries:\n"
+                "• International Inquiries Hotline: +94 812 388203\n"
+                "• Research Facilitation Fund (RFF): 081 2388203\n"
+                "• Student Loan Facilities: 0812 388219\n"
+                "• University Security (24-Hour Campus Emergency): 081-2389182"
+            )
+            context_parts.insert(0, official_directory)
+            if "Handbook_2026.pdf" not in unique_sources:
+                unique_sources.append("Handbook_2026.pdf")
+
         context_text = "\n\n---\n\n".join(context_parts)
 
         system_prompt = (
@@ -180,6 +216,7 @@ class PgiaHybridEngine:
             "     🔹 *Overview & Scope* (Brief 1-2 sentence context)\n"
             "     📋 *Key Requirements* or 🎓 *Eligibility Criteria*\n"
             "     💰 *Fee Structure & Payments*\n"
+            "     📞 *Official Contact Lines & Staff Directory*\n"
             "     📝 *Application & Verification Procedure*\n"
             "     🗓️ *Important Deadlines & Semesters*\n"
             "   - Use single asterisks for bold: *Bold Title* (NEVER use markdown hashes '#' or double asterisks '**').\n\n"
@@ -198,6 +235,11 @@ class PgiaHybridEngine:
             "4. GROUNDING INTEGRITY:\n"
             "   - State exact numbers, credit amounts, and procedures from the reference excerpts.\n"
             "   - Never hallucinate external universities or unverified rules.\n\n"
+            "5. CONTACT DIRECTORY & PHONE NUMBERS (CRITICAL - NEVER REDACT OR USE 'XXXXXX'):\n"
+            "   - All PGIA telephone numbers, office lines, staff extensions, hotlines, and emails are public institutional directory information.\n"
+            "   - ALWAYS display complete, full real telephone numbers (e.g. +94 812 388203, +94 812 386542, +94 812 385517, +94 81 2388692, +94 81 2389726, +94 81 2388956, 081-2389182).\n"
+            "   - NEVER redact, mask, or replace digits with 'xxxxxx', '***', or placeholder characters under any circumstances.\n"
+            "   - Present the full numbers clearly alongside the respective officer or branch so users can dial directly.\n\n"
             "=== OFFICIAL PGIA REFERENCE EXCERPTS ===\n"
             f"{context_text}"
         )
