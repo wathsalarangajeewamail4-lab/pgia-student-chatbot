@@ -156,6 +156,33 @@ class RagService
             }
         }
 
+        $lifecycleKeywords = ['step', 'steps', 'milestone', 'milestones', 'journey', 'progression', 'pass out', 'passout', 'graduate', 'graduation', 'convocation', 'comprehensive exam', 'candidacy', 'proposal', 'defense', 'viva', 'thesis', 'dissertation', 'early exit', 'upgrade', 'pathway', 'next step', 'how to complete'];
+        $isLifecycleQuery = false;
+        foreach ($lifecycleKeywords as $lkw) {
+            if (str_contains($qLower, $lkw)) {
+                $isLifecycleQuery = true;
+                break;
+            }
+        }
+
+        if ($isLifecycleQuery) {
+            $journeyExcerpt = "[PGIA Official Academic Lifecycle & Degree Decision Map - SLQF 8-12]\n"
+                . "Institution: Postgraduate Institute of Agriculture (PGIA), University of Peradeniya\n"
+                . "Degree Progression Matrix:\n"
+                . "• PGD (SLQF 8): 25 CW credits, Min GPA 2.75, Duration: 1-3 yrs. Fallback exit for MSc CW/CW&R.\n"
+                . "• Masters by CW (SLQF 9): 30 credits (25 CW + 5 Directed Study), Min GPA 3.00, Comprehensive Exam (max 2 attempts). Duration: 1-5 yrs.\n"
+                . "• MSc CW & Research (SLQF 10): 60 credits (30 CW + 30 Research), Min GPA 3.00, Comprehensive Exam, Draft proposal by Sem 2, BoS defense, PR-1 biannual reports (S grade), 1 journal paper submitted, Public Seminar, Thesis Defense (2 spiral copies), Green hardbound within 3 mos. Duration: 2-6 yrs. Fallback exit: Masters CW or PGD.\n"
+                . "• MBA (SLQF 10): 60 credits (36 CW + 24 Research), Min GPA 3.00, Comprehensive Exam. Duration: 2.5-6 yrs.\n"
+                . "• M.Phil. (SLQF 11): Pure research (up to 10 free CW credits), 1 published + 1 submitted paper. Eligible to upgrade to Ph.D. after >= 1 yr with Board approval. No early exit award. Duration: 2-7 yrs.\n"
+                . "• Ph.D. (SLQF 12): Pure research (split PhD option), 2 published papers. If doctoral defense fails, may be awarded M.Phil. if criteria met. Duration: 3-8 yrs.\n"
+                . "Lifecycle States: INQUIRY -> APPLICATION_SUBMITTED -> ENROLLED_COURSEWORK -> COMPREHENSIVE_EXAM_PREP -> RESEARCH_PROPOSAL_INITIATION -> CANDIDACY_RESEARCH_ACTIVE -> THESIS_PRE_SUBMISSION -> THESIS_DEFENSE (Viva) -> CONVOCATION_AND_ALUMNI.";
+
+            array_unshift($contextParts, $journeyExcerpt);
+            if (!in_array("pgia_student_journey_map.md", $uniqueSources)) {
+                $uniqueSources[] = "pgia_student_journey_map.md";
+            }
+        }
+
         if ($isContactQuery) {
             $officialDirectory = "[Official PGIA Institutional Contact Directory - Student Handbook]\n"
                 . "Postgraduate Institute of Agriculture (PGIA), University of Peradeniya\n"
@@ -199,6 +226,8 @@ class RagService
             . "- All PGIA telephone numbers, office lines, emails, and staff contacts are public institutional directory records.\n"
             . "- ALWAYS display complete, full real phone numbers (e.g. +94 812 388203, +94 812 386542, +94 812 385517, +94 81 2388692, +94 81 2389726, +94 81 2388956, 081-2389182).\n"
             . "- NEVER replace digits with 'xxxxxx', '***', or placeholder characters under any circumstances.\n\n"
+            . "ACADEMIC LIFECYCLE & PATHWAY GUIDANCE:\n"
+            . "- When answering questions about student progression, degree completion, thesis submission, comprehensive exams, or graduation, clearly present chronological milestones, prerequisite gates (e.g. GPA thresholds, credit requirements), and any applicable contingency exit/upgrade pathways based on the PGIA Academic Lifecycle Decision Graph.\n\n"
             . "=== OFFICIAL REFERENCE EXCERPTS ===\n"
             . $contextText;
 

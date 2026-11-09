@@ -1,0 +1,172 @@
+{
+  "system": "PGIA Postgraduate Academic Lifecycle State Machine & Decision Graph",
+  "version": "2026.1",
+  "institution": "Postgraduate Institute of Agriculture, University of Peradeniya",
+  "degrees": {
+    "PGD": {
+      "name": "Postgraduate Diploma",
+      "slqf_level": 8,
+      "total_credits": 25,
+      "min_gpa": 2.75,
+      "min_duration_years": 1,
+      "max_duration_years": 3,
+      "is_exit_award": true,
+      "exit_from": ["MSc_CW", "MSc_CWR"]
+    },
+    "Masters_CW": {
+      "name": "Master of Science (Course Work)",
+      "slqf_level": 9,
+      "total_credits": 30,
+      "breakdown": "25 Credits Coursework + 5 Credits Directed Study / Project",
+      "min_gpa": 3.00,
+      "comprehensive_exam_required": true,
+      "max_ce_attempts": 2,
+      "min_duration_years": 1,
+      "max_duration_years": 5,
+      "fallback_exit": "PGD (if GPA >= 2.75 and credits >= 25)"
+    },
+    "MSc_CWR": {
+      "name": "Master of Science (Course Work & Research)",
+      "slqf_level": 10,
+      "total_credits": 60,
+      "breakdown": "30 Credits Coursework + 30 Credits Research (minimum 15 Research)",
+      "min_gpa": 3.00,
+      "comprehensive_exam_required": true,
+      "research_milestones": [
+        "Draft proposal in 2nd semester",
+        "Interim supervisor appointment",
+        "Full proposal presentation and ethical clearance",
+        "Supervisory committee appointment (min 2 members)",
+        "Biannual progress reports every 6 months (S/U grade)",
+        "Minimum 1 research paper submitted to refereed journal",
+        "Public seminar at PGIA",
+        "Spiral bound thesis submission (2 copies)",
+        "Oral Thesis Defense Examination (TDE)",
+        "Final green hardbound thesis submission (2 copies + PDF CD within 3 months)"
+      ],
+      "min_duration_years": 2,
+      "max_duration_years": 6,
+      "fallback_exit": "Masters_CW or PGD"
+    },
+    "MBA_CWR": {
+      "name": "Master of Business Administration (Course Work & Research)",
+      "slqf_level": 10,
+      "total_credits": 60,
+      "breakdown": "36 Credits Coursework + 24 Credits Research",
+      "min_gpa": 3.00,
+      "comprehensive_exam_required": true,
+      "min_duration_years": 2.5,
+      "max_duration_years": 6
+    },
+    "MPhil": {
+      "name": "Master of Philosophy",
+      "slqf_level": 11,
+      "nature": "Pure Research Degree",
+      "free_coursework_credits": 10,
+      "min_duration_years": 2,
+      "max_duration_years": 7,
+      "publication_requirement": "1 published paper + 1 submitted paper in refereed journal",
+      "upgrade_route": "Eligible to upgrade to Ph.D. after minimum 1 year with Board approval",
+      "early_exit": "No early exit degree permitted"
+    },
+    "PhD": {
+      "name": "Doctor of Philosophy",
+      "slqf_level": 12,
+      "nature": "Pure Research Degree (Split PhD option with foreign universities)",
+      "min_duration_years": 3,
+      "max_duration_years": 8,
+      "publication_requirement": "2 published papers in refereed journals",
+      "fallback_exit": "May be awarded M.Phil. if doctoral defense does not pass but MPhil criteria met"
+    }
+  },
+  "states": {
+    "INQUIRY": {
+      "description": "Prospective applicant exploring degree programs, entry requirements, and deadlines.",
+      "next_state": "APPLICATION_SUBMITTED",
+      "key_documents": ["Prospectus_2024.pdf", "PGIA_Admissions_Call_Colombo_Intake_2025_26.pdf", "PGIA_Admissions_Call_Peradeniya_Intake_2025_26_Semester_2.pdf", "PGIA_Fee_Structure_Peradeniya_Intake_2024_2026.pdf"]
+    },
+    "APPLICATION_SUBMITTED": {
+      "description": "Application form submitted with certified degree certificates, birth certificate, referee reports, and paying voucher.",
+      "prerequisites": ["Bachelors degree or equivalent", "2 referee reports", "Application fee paid"],
+      "next_state": "ADMITTED",
+      "key_documents": ["PGIA_Admissions_Instructions_Colombo_Intake_2025_26.pdf", "PGIA_Admissions_Form_Referee_Report.pdf"]
+    },
+    "ENROLLED_COURSEWORK": {
+      "description": "Active coursework student registered in MIS, attending lectures, and submitting modular assessments.",
+      "regulations": [
+        "Course enrolment in MIS during first 2 weeks",
+        "2-week drop/add period",
+        "Maximum 4 credits outside Board of Study",
+        "End-semester examinations",
+        "Passing GPA >= 3.00 (>= 2.75 for PGD)",
+        "Grades below B can be retaken to improve GPA",
+        "GPA < 2.50 results in academic probation"
+      ],
+      "next_state": "COMPREHENSIVE_EXAM_PREP"
+    },
+    "COMPREHENSIVE_EXAM_PREP": {
+      "description": "Student has completed coursework credits and prepares to sit for Comprehensive Examination.",
+      "prerequisites": [
+        "All coursework credits completed (30 for MSc, 36 for MBA)",
+        "Cumulative Final GPA >= 3.00",
+        "No pending Incomplete (I) grades",
+        "Registration active in current semester"
+      ],
+      "attempt_rules": "Maximum 2 attempts permitted. Failure at 2nd attempt leads to PGD exit award if eligible.",
+      "next_state": "RESEARCH_PROPOSAL_INITIATION"
+    },
+    "RESEARCH_PROPOSAL_INITIATION": {
+      "description": "Initiation of research degree or research component.",
+      "steps": [
+        "Submit concept note and draft proposal",
+        "Interim supervisor appointed by Board of Study",
+        "Develop full research proposal within 3 months",
+        "Defend proposal before Board of Study",
+        "Obtain Ethical Clearance from PGIA Ethical Review Committee",
+        "Supervisory committee formally appointed"
+      ],
+      "key_documents": ["PGIA_Research_Template_Proposal.pdf", "PGIA_Research_Guidelines_Ethical_Clearance.pdf"]
+    },
+    "CANDIDACY_RESEARCH_ACTIVE": {
+      "description": "Active research conduction, field/laboratory experiments, and data analysis.",
+      "requirements": [
+        "Submit progress report every 6 months to PGIA (Form PR-1) with supervisor S/U grading",
+        "Present research findings at PGIA Annual Congress",
+        "Prepare and submit manuscripts to peer-reviewed indexed journals"
+      ],
+      "next_state": "THESIS_PRE_SUBMISSION"
+    },
+    "THESIS_PRE_SUBMISSION": {
+      "description": "Research completed; student prepares for thesis examination.",
+      "prerequisites": [
+        "All course and research credits fulfilled",
+        "Comprehensive Exam passed",
+        "All biannual progress reports submitted and graded Satisfactory",
+        "Required journal papers published or submitted",
+        "Deliver public seminar at PGIA",
+        "Plagiarism check cleared",
+        "Spiral bound copies (2 for MSc/MPhil, 3 for PhD) signed by all supervisors"
+      ],
+      "key_documents": ["PGIA_Research_Application_Thesis_Defense_Examination.pdf"]
+    },
+    "THESIS_DEFENSE": {
+      "description": "Oral viva voce examination conducted by Examination Committee with internal and external examiners.",
+      "possible_outcomes": [
+        "Accepted as submitted (Effective date = Date of Defense)",
+        "Accepted subject to minor revisions (Must submit final copies within 3 months; effective date = Date of Defense)",
+        "Accepted subject to major revisions (Must re-submit for repeat defense between 6 and 12 months)",
+        "Rejected (Ineligible for degree)"
+      ]
+    },
+    "CONVOCATION_AND_ALUMNI": {
+      "description": "Degree conferment and convocation.",
+      "steps": [
+        "Submit 2 green hardbound copies with gold lettering + PDF soft copy",
+        "Library clearance certificate obtained",
+        "Student ID card invalidated by library",
+        "Dean/Director clearance and convocation registration",
+        "Degree awarded at University of Peradeniya General Convocation"
+      ]
+    }
+  }
+}

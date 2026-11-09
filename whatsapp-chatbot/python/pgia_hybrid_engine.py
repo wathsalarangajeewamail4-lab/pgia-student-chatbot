@@ -64,6 +64,16 @@ class PgiaHybridEngine:
             max_tokens=1024
         )
 
+        journey_path = os.path.join(os.path.dirname(__file__), "pgia_student_journey_map.json")
+        self.journey_map = {}
+        if os.path.exists(journey_path):
+            try:
+                with open(journey_path, "r", encoding="utf-8") as f:
+                    self.journey_map = json.load(f)
+                print(f"[HybridEngine] Student Journey Map loaded successfully ({len(self.journey_map.get('degrees', {}))} degrees, {len(self.journey_map.get('states', {}))} states)")
+            except Exception as e:
+                print(f"[HybridEngine] Warning: Could not load Journey Map: {e}")
+
     def load_knowledge_base(self):
         """Thread-safe zero-downtime hot-reload of Vector Matrix and BM25 index."""
         print(f"[HybridEngine] Loading chunks from {DB_PATH}...")
@@ -323,6 +333,49 @@ class PgiaHybridEngine:
             if "Handbook_2026.pdf" not in unique_sources:
                 unique_sources.append("Handbook_2026.pdf")
 
+        # Check if question relates to student lifecycle, degree progression, transitions, or credit rules
+        journey_keywords = [
+            "after coursework", "what next", "next step", "progress", "thesis", "defense", 
+            "comprehensive exam", "ce", "credit", "gpa", "slqf", "directed study", 
+            "upgrade", "convert", "exit", "diploma", "duration", "time limit", 
+            "pass out", "convocation", "stages", "roadmap", "lifecycle", "pass masters", "pass msc"
+        ]
+        if any(k in question.lower() for k in journey_keywords) and self.journey_map:
+            journey_context = (
+                "=== PGIA ACADEMIC JOURNEY DECISION MAP (LIFECYCLE STATE MACHINE) ===\n"
+                "Use this official lifecycle structure to provide exact step-by-step guidance on prerequisites, "
+                "transitions, GPA thresholds, and exit routes:\n\n"
+            )
+            for deg_code, deg in self.journey_map.get("degrees", {}).items():
+                journey_context += f"• Track {deg_code} ({deg.get('name')} - SLQF {deg.get('slqf_level')}):\n"
+                journey_context += f"  - Credits: {deg.get('total_credits', 'N/A')} ({deg.get('breakdown', deg.get('nature', ''))})\n"
+                if "min_gpa" in deg:
+                    journey_context += f"  - Min GPA: {deg.get('min_gpa')}\n"
+                if "min_duration_years" in deg:
+                    journey_context += f"  - Duration: {deg.get('min_duration_years')} to {deg.get('max_duration_years')} years\n"
+                if "fallback_exit" in deg:
+                    journey_context += f"  - Fallback / Early Exit: {deg.get('fallback_exit')}\n"
+                if "upgrade_route" in deg:
+                    journey_context += f"  - Upgrade Option: {deg.get('upgrade_route')}\n"
+                if "publication_requirement" in deg:
+                    journey_context += f"  - Publications: {deg.get('publication_requirement')}\n"
+            
+            journey_context += "\nKey Lifecycle States & Gates:\n"
+            for st_name, st_info in self.journey_map.get("states", {}).items():
+                journey_context += f"• Stage [{st_name}]: {st_info.get('description')}\n"
+                if "prerequisites" in st_info:
+                    journey_context += f"  - Prerequisites: {', '.join(st_info['prerequisites'])}\n"
+                if "regulations" in st_info:
+                    journey_context += f"  - Regulations: {'; '.join(st_info['regulations'])}\n"
+                if "steps" in st_info:
+                    journey_context += f"  - Required Steps: {'; '.join(st_info['steps'])}\n"
+                if "possible_outcomes" in st_info:
+                    journey_context += f"  - Outcomes: {'; '.join(st_info['possible_outcomes'])}\n"
+            
+            context_parts.insert(0, journey_context)
+            if "pgia_student_journey_map.md" not in unique_sources:
+                unique_sources.append("pgia_student_journey_map.md")
+
         context_text = "\n\n---\n\n".join(context_parts)
 
         system_prompt = (
@@ -359,6 +412,9 @@ class PgiaHybridEngine:
             "   - ALWAYS display complete, full real telephone numbers (e.g. +94 812 388203, +94 812 386542, +94 812 385517, +94 81 2388692, +94 81 2389726, +94 81 2388956, 081-2389182).\n"
             "   - NEVER redact, mask, or replace digits with 'xxxxxx', '***', or placeholder characters under any circumstances.\n"
             "   - Present the full numbers clearly alongside the respective officer or branch so users can dial directly.\n\n"
+            "6. ACADEMIC LIFECYCLE & PATHWAY GUIDANCE:\n"
+            "   - When a student asks about their progression, requirements, 'what should I do next', comprehensive exams, thesis defense, credit rules, or passing out, structure the answer using the official PGIA Academic Journey Map.\n"
+            "   - Address their current status, exact prerequisites for the next gate, critical deadlines, forms required, and contingency/exit routes (e.g. Postgraduate Diploma exit, repeating CE, upgrading M.Phil to PhD).\n\n"
             "=== OFFICIAL PGIA REFERENCE EXCERPTS ===\n"
             f"{context_text}"
         )
