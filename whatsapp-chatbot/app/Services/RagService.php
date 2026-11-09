@@ -183,6 +183,45 @@ class RagService
             }
         }
 
+        $feeKeywords = ['fee', 'fees', 'cost', 'costs', 'payment', 'payments', 'tuition', 'installment', 'installments', 'lkr', 'usd', 'dollar', 'rupee', 'rupees', 'how much', 'price', 'pricing', 'scholarship', 'waiver'];
+        $isFeeQuery = false;
+        foreach ($feeKeywords as $fkw) {
+            if (str_contains($qLower, $fkw)) {
+                $isFeeQuery = true;
+                break;
+            }
+        }
+
+        if ($isFeeQuery) {
+            $feeExcerpt = "[Official PGIA Institutional Fee Schedule - Student Handbook & Bylaws]\n"
+                . "Postgraduate Institute of Agriculture, University of Peradeniya\n\n"
+                . "CATEGORY 1: SRI LANKAN LOCAL STUDENTS (CURRENCY: LKR - NEVER QUOTE IN USD)\n"
+                . "• Application Fee: LKR 3,000 | Library Deposit (Refundable): LKR 5,000 | Admin Costs (4 Sems): LKR 20,000\n"
+                . "• Postgraduate Diploma (SLQF 8): Course fee LKR 100,000 – 125,000 (Total ~LKR 98,000 – 153,000)\n"
+                . "• Masters by Coursework (SLQF 9): LKR 125,000 – 250,000 (Food Science: LKR 400,000; MBA: LKR 250,000 + LKR 200,000 books fee)\n"
+                . "• M.Sc. CW & Research (SLQF 10): LKR 225,000 – 350,000 (Food Science: LKR 500,000; MBA: LKR 250,000)\n"
+                . "• Research Degrees: M.Phil. LKR 300,000 (Total LKR 328,000) | Ph.D. LKR 400,000 (Total LKR 428,000) | DBA LKR 500,000\n\n"
+                . "CATEGORY 2: SRI LANKAN STUDENTS RESIDING ABROAD (CURRENCY: LKR - NEVER QUOTE IN USD)\n"
+                . "• Flat Course Fee: LKR 600,000 applies to ALL degree programs (Masters, MSc, MBA, MPhil, PhD) for online lecture delivery, tech support, and examinations.\n"
+                . "• Students Who Move Abroad After Registration: Additional fee of LKR 300,000.\n\n"
+                . "CATEGORY 3: FOREIGN & INTERNATIONAL STUDENTS (CURRENCY: USD)\n"
+                . "• SAARC & Developing Countries: Masters CW: $1,000 – $2,500 | MSc CW&R: $2,000 – $3,500 | M.Phil: $2,500 | Ph.D: $3,500\n"
+                . "• Other Countries / Non-SAARC: Masters CW: $4,000 (MBA $6,000) | MSc CW&R: $6,000 (MBA $8,000) | M.Phil: $6,000 | Ph.D: $8,000\n"
+                . "• Admin Fees: Application Free | Semester Registration $20 | Comp Exam / Thesis Defense $75 per attempt.\n\n"
+                . "SPECIAL PAYMENT PRIVILEGE: 10% Fee Waiver when full program fee is paid at once (cash, credit card, or bank loan). 2-semester installment facility available.";
+
+            array_unshift($contextParts, $feeExcerpt);
+            if (!in_array("PGIA_Fee_Structure_Peradeniya_Intake_2024_2026.pdf", $uniqueSources)) {
+                $uniqueSources[] = "PGIA_Fee_Structure_Peradeniya_Intake_2024_2026.pdf";
+            }
+            if (!in_array("PGIA_Fee_Structure_Local_Students_Residing_Abroad.pdf", $uniqueSources)) {
+                $uniqueSources[] = "PGIA_Fee_Structure_Local_Students_Residing_Abroad.pdf";
+            }
+            if (!in_array("PGIA_Fee_Structure_Foreign_and_International_Students.pdf", $uniqueSources)) {
+                $uniqueSources[] = "PGIA_Fee_Structure_Foreign_and_International_Students.pdf";
+            }
+        }
+
         if ($isContactQuery) {
             $officialDirectory = "[Official PGIA Institutional Contact Directory - Student Handbook]\n"
                 . "Postgraduate Institute of Agriculture (PGIA), University of Peradeniya\n"
@@ -228,6 +267,13 @@ class RagService
             . "- NEVER replace digits with 'xxxxxx', '***', or placeholder characters under any circumstances.\n\n"
             . "ACADEMIC LIFECYCLE & PATHWAY GUIDANCE:\n"
             . "- When answering questions about student progression, degree completion, thesis submission, comprehensive exams, or graduation, clearly present chronological milestones, prerequisite gates (e.g. GPA thresholds, credit requirements), and any applicable contingency exit/upgrade pathways based on the PGIA Academic Lifecycle Decision Graph.\n\n"
+            . "THREE (3) STUDENT CATEGORIES & CURRENCY DISCIPLINE (CRITICAL - NEVER QUOTE ONLY USD):\n"
+            . "- There are THREE DISTINCT STUDENT TYPES at PGIA. NEVER quote fees only in USD for general inquiries!\n"
+            . "- ALWAYS categorize by the 3 student types:\n"
+            . "  1. 🇱🇰 *Sri Lankan Students (Local / Resident)*: ALWAYS quote in *LKR (Sri Lankan Rupees)* (e.g. PGD: LKR 100,000–125,000; Masters CW: LKR 125,000–250,000; MSc CW&R: LKR 225,000–350,000; MPhil: LKR 300,000; PhD: LKR 400,000; Admin cost: LKR 20,000 + LKR 5,000 library deposit).\n"
+            . "  2. 🌍 *Sri Lankan Students Residing Abroad (Expatriates / Non-Residents)*: ALWAYS quote in *LKR* as a *Flat Course Fee of LKR 600,000* for ALL degree programs (Masters, MSc, MBA, MPhil, PhD) for online lecture delivery and tech support.\n"
+            . "  3. 🌐 *Foreign / International Students (Non-Sri Lankans)*: ALWAYS quote in *USD ($)* (SAARC: $1,000–$3,500 vs Other Countries / Non-SAARC: $4,000–$8,000).\n"
+            . "- Always highlight the *10% fee waiver* for full upfront payment!\n\n"
             . "=== OFFICIAL REFERENCE EXCERPTS ===\n"
             . $contextText;
 

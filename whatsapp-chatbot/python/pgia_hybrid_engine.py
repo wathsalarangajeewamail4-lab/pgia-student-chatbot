@@ -376,6 +376,78 @@ class PgiaHybridEngine:
             if "pgia_student_journey_map.md" not in unique_sources:
                 unique_sources.append("pgia_student_journey_map.md")
 
+        # Check if question relates to fees, payments, costs, or tuition
+        fee_keywords = [
+            "fee", "fees", "cost", "costs", "payment", "payments", "tuition",
+            "installment", "installments", "lkr", "usd", "dollar", "rupee",
+            "rupees", "how much", "price", "pricing", "scholarship", "waiver"
+        ]
+        if any(k in q_lower for k in fee_keywords):
+            official_fee_schedule = (
+                "[Official PGIA Institutional Fee Schedule - Student Handbook & Bylaws]\n"
+                "Postgraduate Institute of Agriculture, University of Peradeniya\n\n"
+                "CATEGORY 1: SRI LANKAN LOCAL STUDENTS (CURRENCY: LKR - NEVER QUOTE IN USD)\n"
+                "• Application Fee: LKR 3,000 (Non-refundable)\n"
+                "• Refundable Library Deposit: LKR 5,000\n"
+                "• Administrative Costs (4 Semesters): LKR 20,000 (Semester fees LKR 14,000 + Congress LKR 3,000 + Non-refundable library deposit LKR 3,000)\n"
+                "• Postgraduate Diploma (SLQF 8): Course fee LKR 100,000 – 125,000 (Total ~LKR 98,000 – 153,000)\n"
+                "• Masters by Coursework (SLQF 9):\n"
+                "  - Agricultural Economics: LKR 125,000 (Total LKR 153,000)\n"
+                "  - Plant Biology / Dev Extension: LKR 150,000 (Total LKR 178,000)\n"
+                "  - Animal Science / Crop Science: LKR 175,000 (Total LKR 203,000)\n"
+                "  - Agricultural Engineering / Bio-Statistics: LKR 200,000 (Total LKR 228,000)\n"
+                "  - Organizational Management: LKR 195,000 (Total LKR 223,000)\n"
+                "  - Biotechnology: LKR 250,000 (Total LKR 278,000)\n"
+                "  - MBA: LKR 250,000 (Total LKR 278,000 + Text Books LKR 200,000)\n"
+                "  - Food Science & Technology: LKR 400,000 (Total LKR 428,000)\n"
+                "• M.Sc. Course Work & Research (SLQF 10):\n"
+                "  - Agricultural Economics: LKR 225,000 (Total LKR 253,000)\n"
+                "  - Plant Biology / Extension: LKR 250,000 (Total LKR 278,000)\n"
+                "  - Animal Science / Crop Science: LKR 275,000 (Total LKR 303,000)\n"
+                "  - Agricultural Engineering / Bio-Statistics: LKR 300,000 (Total LKR 328,000)\n"
+                "  - Biotechnology: LKR 350,000 (Total LKR 378,000)\n"
+                "  - MBA (CW & Research): LKR 250,000 (Total LKR 278,000 + Text Books LKR 200,000)\n"
+                "  - Food Science & Technology: LKR 500,000 (Total LKR 528,000)\n"
+                "• Research Degrees (SLQF 11 & 12):\n"
+                "  - M.Phil.: Programme fee LKR 300,000 (Total LKR 328,000)\n"
+                "  - Ph.D.: Programme fee LKR 400,000 (Total LKR 428,000)\n"
+                "  - DBA: Programme fee LKR 500,000 (Total LKR 528,000)\n\n"
+                "CATEGORY 2: SRI LANKAN STUDENTS RESIDING ABROAD (CURRENCY: LKR - NEVER QUOTE IN USD)\n"
+                "• Flat Course Fee: LKR 600,000 applies to ALL degree programs (Masters, MSc, MBA, MPhil, PhD) across all Boards of Study for online lecture delivery, tech support, and examinations.\n"
+                "• Students Who Move Abroad After Registration: If originally registered as local student and later moves abroad, an additional fee of LKR 300,000 applies.\n\n"
+                "CATEGORY 3: FOREIGN & INTERNATIONAL STUDENTS (CURRENCY: USD)\n"
+                "• SAARC Countries & Other Developing Countries:\n"
+                "  - Masters CW (SLQF 9): USD $1,000 – $2,500 (MBA: $2,500)\n"
+                "  - M.Sc. CW&R (SLQF 10): USD $2,000 – $3,500 (MBA: $2,500)\n"
+                "  - M.Phil.: USD $2,500\n"
+                "  - Ph.D.: USD $3,500\n"
+                "• Other Countries (Complete Foreigners / Non-SAARC):\n"
+                "  - Masters CW (SLQF 9): USD $4,000 (MBA: $6,000; Agroecology: $5,000)\n"
+                "  - M.Sc. CW&R (SLQF 10): USD $6,000 (MBA: $8,000; Agroecology: $7,000)\n"
+                "  - M.Phil.: USD $6,000\n"
+                "  - Ph.D.: USD $8,000\n"
+                "• Foreign Student Admin Fees:\n"
+                "  - Application Fee: Free\n"
+                "  - Semester Registration: USD $20 per semester\n"
+                "  - Student Welfare, Health & IT: USD $20 per semester\n"
+                "  - Annual Congress: USD $20 per year\n"
+                "  - Comprehensive Examination: USD $75 per attempt (inclusive degree certificate)\n"
+                "  - Thesis Defense Examination: USD $75 per attempt (inclusive degree certificate)\n"
+                "  - Library Deposit: USD $50 (refundable) + USD $20 (non-refundable)\n\n"
+                "SPECIAL PAYMENT PRIVILEGES & INCENTIVES:\n"
+                "• 10% Fee Waiver: If the full program fee is paid at once (cash, credit card, or bank loan), 10% of the program fee is waived.\n"
+                "• Installments: 2-semester installment facility available.\n"
+                "• People's Bank, Peradeniya Branch loan facility available with lowest interest.\n"
+                "• First-class degree scholarships (tuition waivers) offered for MBA students."
+            )
+            context_parts.insert(0, official_fee_schedule)
+            if "PGIA_Fee_Structure_Peradeniya_Intake_2024_2026.pdf" not in unique_sources:
+                unique_sources.append("PGIA_Fee_Structure_Peradeniya_Intake_2024_2026.pdf")
+            if "PGIA_Fee_Structure_Local_Students_Residing_Abroad.pdf" not in unique_sources:
+                unique_sources.append("PGIA_Fee_Structure_Local_Students_Residing_Abroad.pdf")
+            if "PGIA_Fee_Structure_Foreign_and_International_Students.pdf" not in unique_sources:
+                unique_sources.append("PGIA_Fee_Structure_Foreign_and_International_Students.pdf")
+
         context_text = "\n\n---\n\n".join(context_parts)
 
         system_prompt = (
@@ -415,6 +487,13 @@ class PgiaHybridEngine:
             "6. ACADEMIC LIFECYCLE & PATHWAY GUIDANCE:\n"
             "   - When a student asks about their progression, requirements, 'what should I do next', comprehensive exams, thesis defense, credit rules, or passing out, structure the answer using the official PGIA Academic Journey Map.\n"
             "   - Address their current status, exact prerequisites for the next gate, critical deadlines, forms required, and contingency/exit routes (e.g. Postgraduate Diploma exit, repeating CE, upgrading M.Phil to PhD).\n\n"
+            "7. THREE (3) STUDENT CATEGORIES & CURRENCY DISCIPLINE (CRITICAL - NEVER QUOTE ONLY USD):\n"
+            "   - There are THREE DISTINCT STUDENT TYPES at PGIA. NEVER quote fees only in USD for general inquiries!\n"
+            "   - ALWAYS categorize by the 3 student types:\n"
+            "     1. 🇱🇰 *Sri Lankan Students (Local / Resident)*: ALWAYS quote in *LKR (Sri Lankan Rupees)* (e.g. PGD: LKR 100,000–125,000; Masters CW: LKR 125,000–250,000; MSc CW&R: LKR 225,000–350,000; MPhil: LKR 300,000; PhD: LKR 400,000; Admin cost: LKR 20,000 + LKR 5,000 library deposit).\n"
+            "     2. 🌍 *Sri Lankan Students Residing Abroad (Expatriates / Non-Residents)*: ALWAYS quote in *LKR* as a *Flat Course Fee of LKR 600,000* for ALL degree programs (Masters, MSc, MBA, MPhil, PhD) for online lecture delivery and tech support.\n"
+            "     3. 🌐 *Foreign / International Students (Non-Sri Lankans)*: ALWAYS quote in *USD ($)* (SAARC: $1,000–$3,500 vs Other Countries / Non-SAARC: $4,000–$8,000).\n"
+            "   - Always highlight the *10% fee waiver* for full upfront payment!\n\n"
             "=== OFFICIAL PGIA REFERENCE EXCERPTS ===\n"
             f"{context_text}"
         )
