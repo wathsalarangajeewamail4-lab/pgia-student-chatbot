@@ -243,7 +243,6 @@ class RagService
 
         $footer = "\n\n{$divider}\n"
                 . "🏛️ *PGIA Official Knowledge Base*\n"
-                . "📄 _Official Reference: {$sourceText}_\n"
                 . "🎯 _Verification Confidence: {$scorePercent}% High Fidelity_";
 
         return $header . $formatted . $footer;

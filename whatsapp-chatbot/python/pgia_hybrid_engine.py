@@ -420,7 +420,6 @@ class PgiaHybridEngine:
         footer = (
             f"\n\n{divider}\n"
             "🏛️ *PGIA Official Knowledge Base*\n"
-            f"📄 _Official Reference: {source_text}_\n"
             f"🎯 _Verification Confidence: {score_percent}% High Fidelity_"
         )
 
