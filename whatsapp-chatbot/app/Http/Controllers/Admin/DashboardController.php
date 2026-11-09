@@ -62,6 +62,16 @@ class DashboardController extends Controller
         ));
     }
 
+    public function journey()
+    {
+        $journeyJsonPath = base_path('python/pgia_student_journey_map.json');
+        $journeyData = [];
+        if (file_exists($journeyJsonPath)) {
+            $journeyData = json_decode(file_get_contents($journeyJsonPath), true);
+        }
+        return view('admin.journey', compact('journeyData'));
+    }
+
     public function documents(Request $request)
     {
         $query = Document::query();

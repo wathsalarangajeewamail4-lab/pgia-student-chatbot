@@ -35,6 +35,7 @@ Route::post('/admin/logout', [AuthController::class, 'logout'])->name('admin.log
 // -----------------------------------------------------------------------------
 Route::middleware(['web', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/journey', [DashboardController::class, 'journey'])->name('journey');
     Route::get('/documents', [DashboardController::class, 'documents'])->name('documents');
     Route::post('/documents/upload', [DashboardController::class, 'upload'])->name('documents.upload');
     Route::delete('/documents/{document}', [DashboardController::class, 'delete'])->name('documents.delete');

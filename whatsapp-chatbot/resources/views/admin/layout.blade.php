@@ -7,6 +7,8 @@
     <title>@yield('title', 'Admin Console') | PGIA Knowledge Base Manager</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mermaid.js for Academic Journey Decision Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -36,6 +38,12 @@
                class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all {{ request()->routeIs('admin.dashboard') ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60' }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard Overview</span>
+            </a>
+
+            <a href="{{ route('admin.journey') }}" 
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all {{ request()->routeIs('admin.journey') ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60' }}">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                <span>Student Journey Map</span>
             </a>
 
             <a href="{{ route('admin.documents') }}" 
@@ -94,6 +102,11 @@
             </div>
 
             <div class="flex items-center gap-3">
+                <button onclick="toggleWebhookModal()" class="text-xs bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/40 text-emerald-300 px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-all shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>WhatsApp Webhook</span>
+                </button>
+
                 <!-- Trigger Global Sync Button -->
                 <form action="{{ route('admin.sync') }}" method="POST">
                     @csrf
@@ -197,6 +210,99 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function toggleWebhookModal() {
+            const modal = document.getElementById('webhook-modal');
+            modal.classList.toggle('hidden');
+            if (!modal.classList.contains('hidden')) {
+                fetchStatus();
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                if (data.webhook_url) {
+                    document.getElementById('modal-webhook-url').value = data.webhook_url;
+                }
+                if (data.verify_token) {
+                    document.getElementById('modal-verify-token').value = data.verify_token;
+                }
+            } catch (e) {
+                console.error('Failed to fetch status', e);
+            }
+        }
+
+        function copyToClipboard(elementId, btn) {
+            const input = document.getElementById(elementId);
+            navigator.clipboard.writeText(input.value).then(() => {
+                const orig = btn.innerText;
+                btn.innerText = 'Copied!';
+                btn.classList.add('bg-emerald-600', 'text-white');
+                setTimeout(() => {
+                    btn.innerText = orig;
+                    btn.classList.remove('bg-emerald-600', 'text-white');
+                }, 2000);
+            });
+        }
+    </script>
+
+    <!-- WhatsApp Webhook Status Modal -->
+    <div id="webhook-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 font-bold">
+                        WA
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Meta WhatsApp Webhook Configuration</h3>
+                        <p class="text-xs text-slate-400">Live endpoint connected via Cloudflare Tunnel</p>
+                    </div>
+                </div>
+                <button onclick="toggleWebhookModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="mt-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Callback URL (Meta Developers Portal)</label>
+                    <div class="flex items-center gap-2">
+                        <input id="modal-webhook-url" readonly type="text" class="w-full bg-slate-950 border border-slate-800 text-xs text-emerald-400 font-mono rounded-lg px-3 py-2 focus:outline-none select-all" value="" />
+                        <button onclick="copyToClipboard('modal-webhook-url', this)" class="shrink-0 bg-slate-800 hover:bg-slate-700 text-xs text-white px-3 py-2 rounded-lg transition-all border border-slate-700">Copy</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Verify Token</label>
+                    <div class="flex items-center gap-2">
+                        <input id="modal-verify-token" readonly type="text" class="w-full bg-slate-950 border border-slate-800 text-xs text-white font-mono rounded-lg px-3 py-2 focus:outline-none select-all" value="my_secret_token_123" />
+                        <button onclick="copyToClipboard('modal-verify-token', this)" class="shrink-0 bg-slate-800 hover:bg-slate-700 text-xs text-white px-3 py-2 rounded-lg transition-all border border-slate-700">Copy</button>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800/80 text-xs text-slate-300 space-y-1.5">
+                    <div class="font-semibold text-emerald-400 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Meta Developer Configuration Steps:
+                    </div>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-400 text-[11px] leading-relaxed">
+                        <li>Open <span class="text-white font-mono">developers.facebook.com &gt; PGIA Assistant</span></li>
+                        <li>Click <span class="text-white font-mono">WhatsApp &gt; Configuration</span></li>
+                        <li>Click <span class="text-white font-medium">Edit</span> on the Webhook section</li>
+                        <li>Paste the <span class="text-emerald-400 font-mono">Callback URL</span> and <span class="text-white font-mono">Verify Token</span> above</li>
+                        <li>Click <span class="text-white font-medium">Verify and save</span>, then subscribe to <span class="text-white font-mono">messages</span></li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+                <button onclick="toggleWebhookModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2 rounded-lg transition-all border border-slate-700 font-medium">Close</button>
+            </div>
+        </div>
+    </div>
     </script>
 </body>
 </html>
