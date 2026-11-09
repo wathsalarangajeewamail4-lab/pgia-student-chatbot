@@ -20,7 +20,7 @@ jobs:
 
       - name: Trigger Server Deployment Webhook
         env:
-          DEPLOY_URL: ${{ secrets.DEPLOY_WEBHOOK_URL || 'https://reservations-mods-chain-ciao.trycloudflare.com/api/deploy/webhook' }}
+          DEPLOY_URL: ${{ secrets.DEPLOY_WEBHOOK_URL || 'https://salt-diagram-samuel-gardening.trycloudflare.com/api/deploy/webhook' }}
           DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET || 'pgia_ci_cd_secret_2026' }}
         run: |
           echo "🚀 Triggering PGIA Automated Deployment on Dell T440 Production Server..."
