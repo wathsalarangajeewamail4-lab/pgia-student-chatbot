@@ -28,6 +28,13 @@ class AnswerRequest(BaseModel):
     message: Optional[str] = None
     question: Optional[str] = None
 
+class ProcessPdfRequest(BaseModel):
+    file_path: str
+    source_name: str
+
+class RemoveSourceRequest(BaseModel):
+    source_name: str
+
 @app.on_event("startup")
 def startup_event():
     global engine
@@ -72,6 +79,36 @@ def reload_kb():
         raise HTTPException(status_code=503, detail="Engine not ready")
     engine.load_knowledge_base()
     return {"status": "reloaded", "total_chunks": len(engine.texts)}
+
+@app.post("/api/documents/process-pdf")
+def process_pdf(req: ProcessPdfRequest):
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not ready")
+    try:
+        saved = engine.ingest_pdf(req.file_path, req.source_name)
+        return {
+            "status": "success",
+            "source": req.source_name,
+            "chunks_saved": saved,
+            "total_chunks": len(engine.texts)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/documents/remove-source")
+def remove_source(req: RemoveSourceRequest):
+    if not engine:
+        raise HTTPException(status_code=503, detail="Engine not ready")
+    try:
+        deleted = engine.remove_source(req.source_name)
+        return {
+            "status": "success",
+            "source": req.source_name,
+            "chunks_deleted": deleted,
+            "total_chunks": len(engine.texts)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

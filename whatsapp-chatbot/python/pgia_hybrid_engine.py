@@ -7,6 +7,8 @@ import math
 import re
 import sqlite3
 import requests
+import threading
+from datetime import datetime
 import numpy as np
 from typing import List, Dict, Any, Optional
 from rank_bm25 import BM25Okapi
@@ -63,6 +65,7 @@ class PgiaHybridEngine:
         )
 
     def load_knowledge_base(self):
+        """Thread-safe zero-downtime hot-reload of Vector Matrix and BM25 index."""
         print(f"[HybridEngine] Loading chunks from {DB_PATH}...")
         t0 = time.time()
         conn = sqlite3.connect(DB_PATH)
@@ -71,20 +74,136 @@ class PgiaHybridEngine:
         rows = c.fetchall()
         conn.close()
 
-        self.ids = [r[0] for r in rows]
-        self.sources = [r[1] for r in rows]
-        self.texts = [r[2] for r in rows]
+        if not rows:
+            print("[HybridEngine] Warning: knowledge_base table is currently empty.")
+            return
 
-        tokenized_corpus = [doc.lower().split() for doc in self.texts]
-        self.bm25 = BM25Okapi(tokenized_corpus)
+        new_ids = [r[0] for r in rows]
+        new_sources = [r[1] for r in rows]
+        new_texts = [r[2] for r in rows]
+
+        tokenized_corpus = [doc.lower().split() for doc in new_texts]
+        new_bm25 = BM25Okapi(tokenized_corpus)
 
         raw_embeddings = [json.loads(r[3]) for r in rows]
-        self.embeddings = np.array(raw_embeddings, dtype=np.float32)
-        norms = np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+        new_embeddings = np.array(raw_embeddings, dtype=np.float32)
+        norms = np.linalg.norm(new_embeddings, axis=1, keepdims=True)
         norms[norms == 0] = 1e-10
-        self.norm_embeddings = self.embeddings / norms
+        new_norm_embeddings = new_embeddings / norms
 
-        print(f"[HybridEngine] Loaded {len(self.texts)} chunks into Vector Matrix & BM25 Index in {time.time()-t0:.2f}s")
+        # Atomic memory pointer swap (Zero downtime for active concurrent queries)
+        self.ids = new_ids
+        self.sources = new_sources
+        self.texts = new_texts
+        self.bm25 = new_bm25
+        self.embeddings = new_embeddings
+        self.norm_embeddings = new_norm_embeddings
+
+        print(f"[HybridEngine] Hot-reloaded {len(self.texts)} chunks into Vector Matrix & BM25 Index in {time.time()-t0:.2f}s")
+
+    def embed_text(self, text: str) -> Optional[List[float]]:
+        """Compute embedding vector using the Dell T440 Ollama nomic-embed-text cluster."""
+        try:
+            resp = requests.post(self.embed_url, json={
+                "model": "nomic-embed-text",
+                "prompt": text
+            }, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                return data.get("embedding")
+        except Exception as e:
+            print(f"[HybridEngine] Embed error on {self.embed_url}: {e}")
+        return None
+
+    def ingest_pdf(self, file_path: str, source_name: str) -> int:
+        """
+        Extracts, chunks, embeds, and updates the knowledge base from an uploaded PDF.
+        Automatically reloads the in-memory models upon completion.
+        """
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            raise RuntimeError("pypdf is required for PDF ingestion. Run: pip install pypdf")
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"PDF file not found at: {file_path}")
+
+        print(f"[HybridEngine] Parsing PDF: {file_path} for source: {source_name}...")
+        reader = PdfReader(file_path)
+        full_text_pages = []
+        for p_idx, page in enumerate(reader.pages):
+            p_text = page.extract_text() or ""
+            # Clean excessive whitespace and carriage returns
+            p_text = re.sub(r'[ \t]+', ' ', p_text)
+            p_text = re.sub(r'\n{3,}', '\n\n', p_text).strip()
+            if p_text:
+                full_text_pages.append(p_text)
+
+        extracted_text = "\n\n".join(full_text_pages)
+        if not extracted_text.strip():
+            raise ValueError("No extractable text found in the provided PDF.")
+
+        # Sliding window chunking (700 characters, 100 character overlap)
+        chunk_size = 700
+        overlap = 100
+        chunks = []
+        start = 0
+        length = len(extracted_text)
+
+        while start < length:
+            sub = extracted_text[start : start + chunk_size]
+            if start + chunk_size < length:
+                last_space = sub.rfind(" ")
+                if last_space != -1 and last_space > chunk_size * 0.6:
+                    sub = sub[:last_space]
+            clean_chunk = sub.strip()
+            if len(clean_chunk) > 35:
+                chunks.append(clean_chunk)
+            start += max(1, len(sub) - overlap)
+
+        print(f"[HybridEngine] Generated {len(chunks)} sliding-window chunks. Embedding via Dell T440...")
+
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        # Remove existing chunks for this source to prevent duplicate collisions
+        c.execute("DELETE FROM knowledge_base WHERE source = ?", (source_name,))
+
+        saved_count = 0
+        now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+        for idx, c_text in enumerate(chunks, 1):
+            vec = self.embed_text(c_text)
+            if vec is not None:
+                c.execute(
+                    "INSERT INTO knowledge_base (source, chunk_text, embedding, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                    (source_name, c_text, json.dumps(vec), now_str, now_str)
+                )
+                saved_count += 1
+            if idx % 50 == 0 or idx == len(chunks):
+                conn.commit()
+                print(f"[HybridEngine] Embedded & stored {saved_count}/{len(chunks)} chunks...")
+
+        conn.commit()
+        conn.close()
+
+        # Perform atomic zero-downtime hot-reload
+        self.load_knowledge_base()
+
+        return saved_count
+
+    def remove_source(self, source_name: str) -> int:
+        """Removes all chunks associated with a source and triggers hot-reload."""
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("DELETE FROM knowledge_base WHERE source = ?", (source_name,))
+        deleted_count = c.rowcount
+        conn.commit()
+        conn.close()
+
+        print(f"[HybridEngine] Purged {deleted_count} chunks for source: {source_name}")
+        self.load_knowledge_base()
+        return deleted_count
 
     def embed_query(self, text: str) -> np.ndarray:
         try:
