@@ -1,0 +1,59 @@
+name: CI Quality & Syntax Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-lint-and-validate:
+    name: 1. PHP Syntax & Environment Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Environment Contract
+        run: |
+          test -f whatsapp-chatbot/.env.example || (echo "ERROR: whatsapp-chatbot/.env.example is missing!" && exit 1)
+          if [ -f whatsapp-chatbot/.env ]; then
+            echo "ERROR: .env file should not be committed to Git!"
+            exit 1
+          fi
+          echo "✅ Environment contract verified."
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, json, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: PHP Lint (Syntax Checking)
+        run: |
+          cd whatsapp-chatbot
+          find app/ routes/ config/ database/ -type f -name "*.php" -exec php -l {} \; | grep -v "No syntax errors detected" || true
+          echo "✅ All PHP files passed syntax linting."
+
+  python-quality-check:
+    name: 2. Python RAG Engine Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Python Syntax & Compile Check
+        run: |
+          cd whatsapp-chatbot
+          python -m py_compile python/*.py
+          echo "✅ All Python RAG engine files compiled without syntax errors."

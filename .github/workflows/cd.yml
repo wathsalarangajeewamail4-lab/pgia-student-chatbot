@@ -1,0 +1,39 @@
+name: CD Production Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Production Server Deployment
+    needs: []
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Trigger Server Deployment Webhook
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_WEBHOOK_URL || 'https://reservations-mods-chain-ciao.trycloudflare.com/api/deploy/webhook' }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET || 'pgia_ci_cd_secret_2026' }}
+        run: |
+          echo "🚀 Triggering PGIA Automated Deployment on Dell T440 Production Server..."
+          RESPONSE=$(curl -s -X POST "$DEPLOY_URL" \
+            -H "X-Deploy-Secret: $DEPLOY_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"ref\":\"${{ github.ref }}\",\"sha\":\"${{ github.sha }}\",\"sender\":{\"login\":\"${{ github.actor }}\"}}")
+          
+          echo "Server Response: $RESPONSE"
+          
+          if echo "$RESPONSE" | grep -q '"status":"success"'; then
+            echo "✅ Deployment Successful! Production server updated and verified."
+          else
+            echo "❌ Deployment Failed!"
+            exit 1
+          fi

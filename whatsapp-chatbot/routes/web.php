@@ -20,6 +20,9 @@ Route::get('/api/status', [WhatsAppController::class, 'getSystemStatus']);
 Route::get('/api/whatsapp/webhook', [WhatsAppController::class, 'verifyWebhook']);
 Route::post('/api/whatsapp/webhook', [WhatsAppController::class, 'handleWebhook']);
 
+// Automated CI/CD Deployment Webhook (GitHub Actions / Webhooks)
+Route::post('/api/deploy/webhook', [\App\Http\Controllers\DeployWebhookController::class, 'handle']);
+
 // -----------------------------------------------------------------------------
 // Admin Authentication Routes
 // -----------------------------------------------------------------------------

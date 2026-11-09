@@ -44,6 +44,8 @@ ENV/
 .venv/
 
 # --- Ephemeral Runtime Files ---
+storage/app/knowledge_documents/*.pdf
+whatsapp-chatbot/storage/app/knowledge_documents/*.pdf
 public/tunnel_url.txt
 whatsapp-chatbot/public/tunnel_url.txt
 public/hot
