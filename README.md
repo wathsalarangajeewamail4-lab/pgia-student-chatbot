@@ -302,6 +302,18 @@ python python/pgia_mcp_server.py
 
 ---
 
+## 📚 Documentation & Architecture Guides
+
+Comprehensive documentation, architecture flowcharts, and executive resources are maintained in the [`docs/`](docs/) directory:
+
+- **[System Story & Architecture Guide (Markdown)](docs/SYSTEM_STORY_AND_ARCHITECTURE_GUIDE.md)**: Beginner-friendly narrative following student Kamal, complete technology roster, sequence diagrams, and glossary.
+- **[System Story & Architecture Guide (PDF)](docs/PGIA_AI_System_Story_and_Architecture_Guide.pdf)**: 8-page publication-quality printable document with full diagrams.
+- **[Academic Student Journey Map (Markdown)](docs/STUDENT_JOURNEY_MAP.md)**: Multi-branch finite state machine covering application to graduation across SLQF 8–12.
+- **[Enterprise Admin Architecture (Markdown)](docs/ADMIN_ENTERPRISE_ARCHITECTURE.md)**: Documentation of administrative console, real-time audit logs, and knowledge management.
+- **[Executive Pitch & Video Production Suite (Markdown)](docs/EXECUTIVE_PITCH_AND_VIDEO_SUITE.md)**: Presentation scripts and promotional materials for university stakeholders.
+
+---
+
 ## 🛡️ Security & Sri Lanka Data Protection Compliance
 
 - **No Secret Leakage**: All API keys, database paths, and tokens are strictly kept in `.env` (ignored by Git).
